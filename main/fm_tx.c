@@ -28,10 +28,9 @@
 #include "esp_timer.h"
 #include "esp32/rom/rtc.h"
 #include <math.h>
+#include <stdio.h>
 #include "fm_tx.h"
-
-
-#include "rickroll.h"
+#include "wav_parser.h"
 
 #define FM_CARRIER_HZ   100000000UL     // FM Carrier Frequency
 #define MAX_DEV_HZ      75000UL        // ±75 kHz standard broadcast
@@ -45,6 +44,7 @@
 static fm_apll_cfg_t fm_calc_apll(uint32_t fout_hz, uint32_t dev_hz);
 
 static fm_apll_cfg_t g_apll;
+static wav_file_t g_wav_file; // Global WAV file context
 
 static inline uint32_t get_xtal_hz(void)
 {
@@ -164,17 +164,41 @@ static inline int16_t clip16(int32_t v){
 
 static void IRAM_ATTR fm_timer_cb(void *arg)
 {
-    static size_t  pos      = 0;
-    /* 1. Leggi campione 8-bit e portalo a signed */
-    int16_t audio = (int16_t)rickroll[pos++] - 128;   // –128 … +127
-    if (pos >= rickroll_len) pos = 0;
-    /* 3. Scala in frazione APLL e applica deviazione */
-    int16_t delta = (audio * g_apll.dev_frac16) >> 7;      // scale
+    int16_t audio;
+    /* 1. Read sample from WAV file */
+    if (!wav_read_sample(&g_wav_file, &audio)) {
+        // If error or end of file, reset to beginning
+        wav_reset(&g_wav_file);
+        wav_read_sample(&g_wav_file, &audio);
+    }
+    /* 2. Scale to APLL fraction and apply deviation */
+    int16_t delta = (audio * g_apll.dev_frac16) >> 15;      // scale for 16-bit audio
     fm_set_deviation(delta);
 }
 
 void fm_start_audio(void)
 {
+    // Open WAV file
+    if (!wav_open("./res/fm.wav", &g_wav_file)) {
+        ESP_LOGE("FM", "Failed to open WAV file");
+        return;
+    }
+    
+    // Check if sample rate matches
+    if (g_wav_file.fmt.sample_rate != WAV_SR_HZ) {
+        ESP_LOGE("FM", "WAV file sample rate (%d Hz) does not match expected (%d Hz)", 
+                 g_wav_file.fmt.sample_rate, WAV_SR_HZ);
+        wav_close(&g_wav_file);
+        return;
+    }
+    
+    ESP_LOGI("FM", "WAV file opened successfully");
+    ESP_LOGI("FM", "Sample rate: %d Hz", g_wav_file.fmt.sample_rate);
+    ESP_LOGI("FM", "Channels: %d", g_wav_file.fmt.num_channels);
+    ESP_LOGI("FM", "Bits per sample: %d", g_wav_file.fmt.bits_per_sample);
+    ESP_LOGI("FM", "Data size: %d bytes", g_wav_file.data.subchunk2_size);
+    
+    // Start the audio timer
     const esp_timer_create_args_t t = {
         .callback = fm_timer_cb,
         .name = "fm_audio"
