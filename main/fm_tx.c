@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include "fm_tx.h"
 #include "wav_parser.h"
+#include "fm_wav.h"
 
 #define FM_CARRIER_HZ   100000000UL     // FM Carrier Frequency
 #define MAX_DEV_HZ      75000UL        // ±75 kHz standard broadcast
@@ -178,9 +179,9 @@ static void IRAM_ATTR fm_timer_cb(void *arg)
 
 void fm_start_audio(void)
 {
-    // Open WAV file
-    if (!wav_open("./res/fm.wav", &g_wav_file)) {
-        ESP_LOGE("FM", "Failed to open WAV file");
+    // Open WAV file from memory
+    if (!wav_open_from_memory(fm_wav, fm_wav_len, &g_wav_file)) {
+        ESP_LOGE("FM", "Failed to open WAV file from memory");
         return;
     }
     
@@ -192,7 +193,7 @@ void fm_start_audio(void)
         return;
     }
     
-    ESP_LOGI("FM", "WAV file opened successfully");
+    ESP_LOGI("FM", "WAV file opened successfully from memory");
     ESP_LOGI("FM", "Sample rate: %d Hz", g_wav_file.fmt.sample_rate);
     ESP_LOGI("FM", "Channels: %d", g_wav_file.fmt.num_channels);
     ESP_LOGI("FM", "Bits per sample: %d", g_wav_file.fmt.bits_per_sample);

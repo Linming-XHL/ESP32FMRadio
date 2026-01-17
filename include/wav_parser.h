@@ -37,13 +37,16 @@ typedef struct {
 
 // WAV file context
 typedef struct {
-    FILE *file;              // File pointer
+    FILE *file;              // File pointer (for file mode)
+    const uint8_t *memory;   // Memory pointer (for memory mode)
     wav_riff_header_t riff;  // RIFF header
     wav_format_header_t fmt; // Format header
     wav_data_header_t data;  // Data header
     uint32_t data_offset;    // Offset to data start
     uint32_t data_pos;       // Current position in data
+    uint32_t memory_size;    // Total size of memory buffer (for memory mode)
     bool is_open;            // Whether file is open
+    bool is_memory_mode;     // Whether using memory mode
 } wav_file_t;
 
 /**
@@ -53,6 +56,15 @@ typedef struct {
  * @return true on success, false on failure
  */
 bool wav_open(const char *filename, wav_file_t *wav);
+
+/**
+ * Open a WAV file from memory and parse its headers
+ * @param data Pointer to WAV data in memory
+ * @param size Size of WAV data in bytes
+ * @param wav Pointer to wav_file_t structure to populate
+ * @return true on success, false on failure
+ */
+bool wav_open_from_memory(const uint8_t *data, uint32_t size, wav_file_t *wav);
 
 /**
  * Read a single sample from WAV file
