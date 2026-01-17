@@ -18,7 +18,7 @@ jobs:
     - name: Build project
       uses: docker://espressif/idf:v5.5
       with:
-        args: bash -c "idf.py fullclean && idf.py reconfigure && idf.py build -v"
+        args: bash -c "idf.py fullclean && idf.py reconfigure && idf.py build"
       
     - name: Upload binaries
       uses: actions/upload-artifact@v4
