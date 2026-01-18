@@ -132,11 +132,12 @@ static inline void fm_set_deviation(int16_t delta_frac16)
 
 void fm_route_to_pin(void)
 {
-    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);   // abilita il mux IO-MUX
+    // Route I2S MCLK to WiFi antenna (GPIO4 - main antenna)
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO4_U, FUNC_GPIO4_CLK_OUT1);   // abilita il mux IO-MUX
     REG_SET_FIELD(PIN_CTRL, CLK_OUT1, 0);                           // sorgente = I2S0 MCLK
-    gpio_set_direction(GPIO_NUM_0, GPIO_MODE_OUTPUT);
-    // Set maximum drive capability for GPIO0 to increase transmission power
-    gpio_set_drive_capability(GPIO_NUM_0, GPIO_DRIVE_CAP_3);
+    gpio_set_direction(GPIO_NUM_4, GPIO_MODE_OUTPUT);
+    // Set maximum drive capability for GPIO4 to increase transmission power
+    gpio_set_drive_capability(GPIO_NUM_4, GPIO_DRIVE_CAP_3);
 }
 
 void fm_i2s_init(void)
@@ -149,9 +150,9 @@ void fm_i2s_init(void)
         .communication_format = I2S_COMM_FORMAT_STAND_PCM_SHORT,   // qualunque, non trasmetti dati (correspond to I2S_COMM_FORMAT_PCM)
         .use_apll             = true,
         .fixed_mclk           = FM_CARRIER_HZ,
-        .dma_buf_count        = 4,
-        .dma_buf_len          = 64,
-        .intr_alloc_flags     = ESP_INTR_FLAG_LEVEL1
+        .dma_buf_count        = 8,     // Increase buffer count for more stable transmission
+        .dma_buf_len          = 128,   // Increase buffer length to reduce interrupt frequency
+        .intr_alloc_flags     = ESP_INTR_FLAG_LEVEL2  // Higher priority interrupt for FM transmission
     };
     ESP_ERROR_CHECK(i2s_driver_install(I2S_NUM_0, &cfg, 0, NULL));
     ESP_ERROR_CHECK(i2s_start(I2S_NUM_0));
@@ -194,6 +195,43 @@ void fm_start_audio(void)
     }
     
     ESP_LOGI("FM", "WAV file opened successfully from memory");
+    ESP_LOGI("FM", "Sample rate: %d Hz", g_wav_file.fmt.sample_rate);
+    ESP_LOGI("FM", "Channels: %d", g_wav_file.fmt.num_channels);
+    ESP_LOGI("FM", "Bits per sample: %d", g_wav_file.fmt.bits_per_sample);
+    ESP_LOGI("FM", "Data size: %d bytes", g_wav_file.data.subchunk2_size);
+    
+    // Start the audio timer
+    const esp_timer_create_args_t t = {
+        .callback = fm_timer_cb,
+        .name = "fm_audio"
+    };
+    esp_timer_handle_t h;
+    esp_timer_create(&t, &h);
+    esp_timer_start_periodic(h, 1000000ULL / WAV_SR_HZ);
+}
+
+void fm_start_audio_from_file(const char *filename)
+{
+    // Close any existing WAV file
+    if (g_wav_file.is_open) {
+        wav_close(&g_wav_file);
+    }
+    
+    // Open WAV file from filesystem
+    if (!wav_open(filename, &g_wav_file)) {
+        ESP_LOGE("FM", "Failed to open WAV file from filesystem: %s", filename);
+        return;
+    }
+    
+    // Check if sample rate matches
+    if (g_wav_file.fmt.sample_rate != WAV_SR_HZ) {
+        ESP_LOGE("FM", "WAV file sample rate (%d Hz) does not match expected (%d Hz)", 
+                 g_wav_file.fmt.sample_rate, WAV_SR_HZ);
+        wav_close(&g_wav_file);
+        return;
+    }
+    
+    ESP_LOGI("FM", "WAV file opened successfully from filesystem: %s", filename);
     ESP_LOGI("FM", "Sample rate: %d Hz", g_wav_file.fmt.sample_rate);
     ESP_LOGI("FM", "Channels: %d", g_wav_file.fmt.num_channels);
     ESP_LOGI("FM", "Bits per sample: %d", g_wav_file.fmt.bits_per_sample);
