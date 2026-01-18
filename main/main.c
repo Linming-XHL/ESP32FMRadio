@@ -13,6 +13,7 @@
 #include "esp_http_server.h"
 #include "esp_vfs.h"
 #include "esp_spiffs.h"
+#include "nvs_flash.h"
 
 #define TAG "FM_WIFI"
 
@@ -288,6 +289,14 @@ void app_main()
     fm_i2s_init();
     fm_route_to_pin();
     fm_apll_init();
+
+    // Initialize NVS - required for WiFi
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
 
     // Initialize WiFi
     ESP_ERROR_CHECK(esp_netif_init());
