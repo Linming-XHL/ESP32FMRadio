@@ -30,10 +30,10 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "WiFi AP started");
     } else if (event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-        ESP_LOGI(TAG, "station %s connected, AID=%d", MAC2STR(event->mac), event->aid);
+        ESP_LOGI(TAG, "station " MACSTR " connected, AID=%d", MAC2STR(event->mac), event->aid);
     } else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
         wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-        ESP_LOGI(TAG, "station %s disconnected, AID=%d", MAC2STR(event->mac), event->aid);
+        ESP_LOGI(TAG, "station " MACSTR " disconnected, AID=%d", MAC2STR(event->mac), event->aid);
     }
 }
 
