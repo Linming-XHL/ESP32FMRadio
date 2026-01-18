@@ -132,12 +132,13 @@ static inline void fm_set_deviation(int16_t delta_frac16)
 
 void fm_route_to_pin(void)
 {
-    // Route I2S MCLK to WiFi antenna (GPIO0 - main antenna alternative)
-    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);   // abilita il mux IO-MUX
-    REG_SET_FIELD(PIN_CTRL, CLK_OUT1, 0);                           // sorgente = I2S0 MCLK
-    gpio_set_direction(GPIO_NUM_0, GPIO_MODE_OUTPUT);
-    // Set maximum drive capability for GPIO0 to increase transmission power
-    gpio_set_drive_capability(GPIO_NUM_0, GPIO_DRIVE_CAP_3);
+    // Route I2S MCLK to WiFi antenna (GPIO16 - safe alternative pin)
+    // GPIO16 is a safe choice that won't interfere with boot process
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO16_U, 3);  // Set GPIO16 to CLK_OUT1 function
+    REG_SET_FIELD(PIN_CTRL, CLK_OUT1, 0);         // Source = I2S0 MCLK
+    gpio_set_direction(GPIO_NUM_16, GPIO_MODE_OUTPUT);
+    // Set maximum drive capability for GPIO16 to increase transmission power
+    gpio_set_drive_capability(GPIO_NUM_16, GPIO_DRIVE_CAP_3);
 }
 
 void fm_i2s_init(void)
