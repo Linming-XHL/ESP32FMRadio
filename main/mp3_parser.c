@@ -73,10 +73,10 @@ bool has_id3v1_tag(const uint8_t *data, uint32_t size) {
 // Calculate ID3v2 tag size
 uint32_t get_id3v2_size(const uint8_t *data) {
     if (memcmp(data, "ID3", 3) != 0) return 0;
-    return ((data[6] & 0x7F) << 21) | 
-           ((data[7] & 0x7F) << 14) | 
-           ((data[8] & 0x7F) << 7) | 
-           (data[9] & 0x7F) + 10; // Add header size
+    return (((data[6] & 0x7F) << 21) | 
+            ((data[7] & 0x7F) << 14) | 
+            ((data[8] & 0x7F) << 7) | 
+            (data[9] & 0x7F)) + 10; // Add header size
 }
 
 // Find first MP3 frame in data
